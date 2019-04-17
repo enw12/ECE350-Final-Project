@@ -9,13 +9,104 @@
  * inspect which signals the processor tries to assert when.
  */
 
-module skeleton(clock, reset, data_writeReg, ctrl_writeReg, ctrl_writeEnable, ALU_rdy, mdRDY);
+module skeleton(clock, reset, // data_writeReg, ctrl_writeReg, ctrl_writeEnable, ALU_rdy, mdRDY, stop, 
+		in_fd, in_back, in_left, in_right, out, Rx);
     input clock, reset;
 	 //TEST
-	 output [31:0] data_writeReg;
-	 output [4:0] ctrl_writeReg;
-	 output ctrl_writeEnable, ALU_rdy, mdRDY;
+//	 output [31:0] data_writeReg;
+//	 output [4:0] ctrl_writeReg;
+//	 output ctrl_writeEnable, ALU_rdy, mdRDY, stop;
 
+	 input in_fd, in_back, in_left, in_right;
+	 output out;
+	 
+	 input Rx;
+	 
+	 /**Custom for Final**/
+	 reg [7:0] out_reg;
+	 
+//	 async_transmitter myTransmit(.clk(clock), .TxD_start(~busy), .TxD_data(out_reg), .TxD(out), .TxD_busy(busy));	
+//	 UART_rs232_tx myTransmit(.Clk(clock), .Rst_n(~reset), .TxEn(TxEnable), .TxData(out_reg), .TxDone(TxDone), 
+//			.Tx(out), .Tick(tick), .NBits(4'b1000));
+//			
+//	 UART_BaudRate_generator(.Clk(clock), .Rst_n(~reset), .Tick(tick), .BaudRate(16'd325));
+			
+
+
+wire [7:0]    	TxData     	; // Data to transmit.
+wire          	RxDone          ; // Reception completed. Data is valid.
+wire          	TxDone          ; // Trnasmission completed. Data sent.
+wire            tick		; // Baud rate clock
+reg          	TxEn            ;
+wire 		RxEn		;
+wire [3:0]      NBits    	;
+wire [15:0]    	BaudRate        ; //328; 162 etc... (Read comment in baud rate generator file)
+/////////////////////////////////////////////////////////////////////////////////////////
+assign 		RxEn = 1'b1	;
+assign 		BaudRate = 16'd325; 	//baud rate set to 9600 for the HC-06 bluetooth module. Why 325? (Read comment in baud rate generator file)
+assign 		NBits = 4'b1000	;	//We send/receive 8 bits
+/////////////////////////////////////////////////////////////////////////////////////////
+
+
+//Make connections between Rx module and TOP inputs and outputs and the other modules
+UART_rs232_rx I_RS232RX(
+    	.Clk(clock)             	,
+   	.Rst_n(~reset)         	,
+    	.RxEn(RxEn)           	,
+    	.RxData(RxData)       	,
+    	.RxDone(RxDone)       	,
+    	.Rx(Rx)               	,
+    	.Tick(tick)           	,
+    	.NBits(NBits)
+    );
+
+//Make connections between Tx module and TOP inputs and outputs and the other modules
+UART_rs232_tx I_RS232TX(
+   	.Clk(clock)            	,
+    	.Rst_n(~reset)         	,
+    	.TxEn(TxEn)           	,
+    	.TxData(out_reg)      	,
+   	.TxDone(TxDone)      	,
+   	.Tx(Tx)               	,
+   	.Tick(tick)           	,
+   	.NBits(NBits)
+    );
+
+//Make connections between tick generator module and TOP inputs and outputs and the other modules
+UART_BaudRate_generator I_BAUDGEN(
+    	.Clk(clock)               ,
+    	.Rst_n(~reset)           ,
+    	.Tick(tick)             ,
+    	.BaudRate(BaudRate)
+    );
+
+			
+	 always
+	 begin
+	 	
+		TxEn = in_fd && in_back && in_left && in_right;
+		
+		if (~in_fd && in_back && in_left && in_right && ~stop)
+			out_reg = 8'b00000001;
+		else if (~in_fd && in_back && in_left && ~in_right && ~stop)
+			out_reg = 8'b00000010;
+		else if (in_fd && in_back && in_left && ~in_right)
+			out_reg = 8'b00000011;
+		else if (in_fd && ~in_back && in_left && ~in_right)
+			out_reg = 8'b00000100;
+		else if (in_fd && ~in_back && in_left && in_right)
+			out_reg = 8'b00000101;
+		else if (in_fd && ~in_back && ~in_left && in_right)
+			out_reg = 8'b00000110;
+		else if (in_fd && in_back && ~in_left && in_right)
+			out_reg = 8'b00000111;
+		else if (~in_fd && in_back && ~in_left && in_right && ~stop)	
+			out_reg = 8'b00001000;
+		else 
+			out_reg = 8'b00000000;
+	 end
+	 
+	 
     /** IMEM **/
     // Figure out how to generate a Quartus syncram component and commit the generated verilog file.
     // Make sure you configure it correctly!
@@ -63,8 +154,14 @@ module skeleton(clock, reset, data_writeReg, ctrl_writeReg, ctrl_writeEnable, AL
     );
 
     /** PROCESSOR **/
+	 assign custom_in = 32'd3;
+	 
     processor my_processor(
-        // Control signals
+        // Custom
+		  custom_in,
+		  stop,
+		  
+		  // Control signals
         clock,                          // I: The master clock
         reset,                          // I: A reset signal
 

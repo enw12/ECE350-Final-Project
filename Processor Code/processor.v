@@ -48,7 +48,11 @@
  *
  */
 module processor(
-    // Control signals
+    // Custom
+	 custom_in,
+	 stop,
+	 
+	 // Control signals
     clock,                          // I: The master clock
     reset,                          // I: A reset signal
 
@@ -75,9 +79,13 @@ module processor(
 	 ALU_rdy,
 	 mdRDY
 );
-    // Control signals
+    // Custom
+	 input [31:0] custom_in;
+	 output stop;
+	 
+	 // Control signals
     input clock, reset;
-
+	 
     // Imem
     output [11:0] address_imem;
     input [31:0] q_imem;
@@ -96,6 +104,9 @@ module processor(
 	 
 	 // TESTING
 	 output ALU_rdy, mdRDY;
+	 
+	 // Custom wire
+	 wire stop_in;
 	 
 	 // Transition Wires
 	 wire [31:0] jumpPC, branchPC, branchPC_store, altPC;
@@ -121,7 +132,7 @@ module processor(
 	 wire [4:0] alu_op_store, shamt_store, rd_store;
 	 
 	 // Execute Wires
-	 wire [31:0] ALU_data2, ALU_in1, ALU_in2, ALU_out, imm_X, target_X, op_XM, PC_XM, data_unaltered, alt_data_val;
+	 wire [31:0] ALU_data2, ALU_in1, ALU_in2, ALU_in2Custom, ALU_out, imm_X, target_X, op_XM, PC_XM, data_unaltered, alt_data_val;
 	 wire [4:0] ALU_op_in, ALU_op_inStore, shamt_in, rd_XM;
 	 wire iTypeX, ne, lt, ovf, ALU_rdy, alt_data;
 	
@@ -173,11 +184,11 @@ module processor(
 	 dec5to32 opcode_decoder(.In(opcode), .out(decoded_opcode));
 	
 	 or rOr(rType, decoded_opcode[0]);
-	 or iOr(iType, decoded_opcode[2], decoded_opcode[5], decoded_opcode[6], decoded_opcode[7], decoded_opcode[8]);
+	 or iOr(iType, decoded_opcode[2], decoded_opcode[5], decoded_opcode[6], decoded_opcode[7], decoded_opcode[8], decoded_opcode[9]);
 	 or j1Or(j1Type, decoded_opcode[1], decoded_opcode[3], decoded_opcode[21], decoded_opcode[22]);
 	 or j2Or(j2Type, decoded_opcode[4]);
 	 
-	 or i_isBranch(iBranch, decoded_opcode[2], decoded_opcode[6]);
+	 or i_isBranch(iBranch, decoded_opcode[2], decoded_opcode[6], decoded_opcode[9]);
 	 assign iALU = iBranch ? 5'b00001 : 5'b00000;
 	 
 	 assign ALU_store = iType ? iALU : ALUOp;
@@ -245,11 +256,9 @@ module processor(
 	 or det_jump(ctrl_jump, op_XM[1], op_XM[3], op_XM[4]);
 	 assign jumpPC = op_XM[4] ? ALU_data2 : target_X;
 	 
-//	 dec5to32 ALUopcode_decoder(.In(ALU_op_in), .out(ALU_opcodeCtrl));
-//	 or detMD(multOrdiv, ALU_opcodeCtrl[6],ALU_opcodeCtrl[7]);
-//	 and detStall(stall, multOrdiv, ~ALU_rdy);
+	 assign ALU_in2Custom = op_XM[9] ? custom_in : ALU_in2;
 	 
-	 alu my_alu(.data_operandA(ALU_in1), .data_operandB(ALU_in2), .ctrl_ALUopcode(ALU_op_in), 
+	 alu my_alu(.data_operandA(ALU_in1), .data_operandB(ALU_in2Custom), .ctrl_ALUopcode(ALU_op_in), 
 			.ctrl_shiftamt(shamt_in), .clock(clock), .data_result(ALU_out), .isNotEqual(ne), .isLessThan(lt), 
 			.overflow(ovf), .dataRDY(ALU_rdy), .resRDY(mdRDY)); 
 	 
@@ -258,6 +267,10 @@ module processor(
 	 or det_branch(will_branch, bne, blt);
 	 cla32 branch_PC(.sum(branchPC_store), .c_in(1'b0), .in1(PC_XM), .in2(imm_X));
 	 
+	 // Custom
+	 and det_stop(stop_in, op_XM[9], ne, ~lt);
+	 DFFE_ref stop_store(.q(stop), .d(stop_in), .clk(clock), .en(op_XM[9]), .clr(reset));
+
 	 or det_alt_data(alt_data, op_XM[3], op_XM[21]);
 	 assign alt_data_val = op_XM[3] ? PC_XM : target_X;
 	 assign data_unaltered = alt_data ? alt_data_val : ALU_data2;

@@ -1,20 +1,15 @@
-module overall(clk, in_fd, in_back, in_left, in_right, out, inSwitch, outSwitch);
+module overall(clk, in_fd, in_back, in_left, in_right, out);
 
 	input clk, in_fd, in_back, in_left, in_right;
-	input inSwitch;
 	
-	output out;
-	output outSwitch;
+	output [7:0] out;
 	
 	wire busy;
 	
 	reg [7:0] out_reg;
-	reg outSwitch_reg;
 		
 	async_transmitter myTransmit(.clk(clk), .TxD_start(~busy), .TxD_data(out_reg), .TxD(out), .TxD_busy(busy));	
-	
-	assign outSwitch = outSwitch_reg;
-	
+		
 	always
 	begin
 		if (in_fd && ~in_back && ~in_left && ~in_right)
@@ -35,12 +30,6 @@ module overall(clk, in_fd, in_back, in_left, in_right, out, inSwitch, outSwitch)
 			out_reg = 8'b00001000;
 		else 
 			out_reg = 8'b00000000;
-			
-		if (inSwitch)
-			outSwitch_reg = 1'b1;
-		else 
-			outSwitch_reg = 1'b0;
-		
 	end
 
 endmodule
