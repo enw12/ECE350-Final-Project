@@ -22,7 +22,7 @@ reg [15:0]      baudRateReg         ; // Register used to count
 always @(posedge Clk or negedge Rst_n)
     if (!Rst_n) baudRateReg <= 16'b1;
     else if (Tick) baudRateReg <= 16'b1;
-         else baudRateReg <= baudRateReg + 1'b1;
+    else baudRateReg <= baudRateReg + 1'b1;
 assign Tick = (baudRateReg == BaudRate);
 endmodule
 

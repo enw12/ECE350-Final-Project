@@ -142,7 +142,7 @@ begin
 	Bit <= 4'b0000;
 	TxDone <= 1'b1;
 	counter <= 4'b0000;
-	//start_bit <=1'b1;
+//	start_bit <=1'b1;
 	end
 	
 	end

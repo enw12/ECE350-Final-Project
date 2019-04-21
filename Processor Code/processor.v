@@ -49,7 +49,7 @@
  */
 module processor(
     // Custom
-	 custom_in,
+	 forward_data,
 	 stop,
 	 
 	 // Control signals
@@ -80,7 +80,7 @@ module processor(
 	 mdRDY
 );
     // Custom
-	 input [31:0] custom_in;
+	 input [31:0] forward_data;
 	 output stop;
 	 
 	 // Control signals
@@ -256,7 +256,7 @@ module processor(
 	 or det_jump(ctrl_jump, op_XM[1], op_XM[3], op_XM[4]);
 	 assign jumpPC = op_XM[4] ? ALU_data2 : target_X;
 	 
-	 assign ALU_in2Custom = op_XM[9] ? custom_in : ALU_in2;
+	 assign ALU_in2Custom = op_XM[9] ? forward_data : ALU_in2;
 	 
 	 alu my_alu(.data_operandA(ALU_in1), .data_operandB(ALU_in2Custom), .ctrl_ALUopcode(ALU_op_in), 
 			.ctrl_shiftamt(shamt_in), .clock(clock), .data_result(ALU_out), .isNotEqual(ne), .isLessThan(lt), 

@@ -10,7 +10,7 @@
  */
 
 module skeleton(clock, reset, // data_writeReg, ctrl_writeReg, ctrl_writeEnable, ALU_rdy, mdRDY, stop, 
-		in_fd, in_back, in_left, in_right, out, Rx);
+		in_fd, in_back, in_left, in_right, out, out_signal, Rx);
     input clock, reset;
 	 //TEST
 //	 output [31:0] data_writeReg;
@@ -19,74 +19,45 @@ module skeleton(clock, reset, // data_writeReg, ctrl_writeReg, ctrl_writeEnable,
 
 	 input in_fd, in_back, in_left, in_right;
 	 output out;
+	 output [7:0] out_signal;
 	 
 	 input Rx;
 	 
 	 /**Custom for Final**/
 	 reg [7:0] out_reg;
+	 assign out_signal = out_reg;
 	 
-//	 async_transmitter myTransmit(.clk(clock), .TxD_start(~busy), .TxD_data(out_reg), .TxD(out), .TxD_busy(busy));	
-//	 UART_rs232_tx myTransmit(.Clk(clock), .Rst_n(~reset), .TxEn(TxEnable), .TxData(out_reg), .TxDone(TxDone), 
-//			.Tx(out), .Tick(tick), .NBits(4'b1000));
-//			
-//	 UART_BaudRate_generator(.Clk(clock), .Rst_n(~reset), .Tick(tick), .BaudRate(16'd325));
-			
+	 reg [7:0] Rx_data;
+	 
+	 reg transmit;
+	 wire t_enable, transmit_active;
 
 
-wire [7:0]    	TxData     	; // Data to transmit.
-wire          	RxDone          ; // Reception completed. Data is valid.
-wire          	TxDone          ; // Trnasmission completed. Data sent.
-wire            tick		; // Baud rate clock
-reg          	TxEn            ;
-wire 		RxEn		;
-wire [3:0]      NBits    	;
-wire [15:0]    	BaudRate        ; //328; 162 etc... (Read comment in baud rate generator file)
-/////////////////////////////////////////////////////////////////////////////////////////
-assign 		RxEn = 1'b1	;
-assign 		BaudRate = 16'd325; 	//baud rate set to 9600 for the HC-06 bluetooth module. Why 325? (Read comment in baud rate generator file)
-assign 		NBits = 4'b1000	;	//We send/receive 8 bits
-/////////////////////////////////////////////////////////////////////////////////////////
+		assign t_enable = ~transmit_active & transmit;
 
+		test myTransmit(
+				.from_uart_ready(), 						// avalon_data_receive_source.ready
+				.from_uart_data(Rx_data),  						//                           .data
+				.from_uart_error(), 						//                           .error
+				.from_uart_valid(), 						//                           .valid
+				.to_uart_data(out_reg),    			//  avalon_data_transmit_sink.data
+				.to_uart_error(1'b0),   						//                           .error
+				.to_uart_valid(transmit), 		  				//                           .valid
+				.to_uart_ready(),   						//                           .ready
+				.clk(clock),          				   //                        clk.clk
+				.UART_RXD(Rx),        						//         external_interface.RXD
+				.UART_TXD(out),      				   //                           .TXD
+				.reset(reset)   
+		);
 
-//Make connections between Rx module and TOP inputs and outputs and the other modules
-UART_rs232_rx I_RS232RX(
-    	.Clk(clock)             	,
-   	.Rst_n(~reset)         	,
-    	.RxEn(RxEn)           	,
-    	.RxData(RxData)       	,
-    	.RxDone(RxDone)       	,
-    	.Rx(Rx)               	,
-    	.Tick(tick)           	,
-    	.NBits(NBits)
-    );
-
-//Make connections between Tx module and TOP inputs and outputs and the other modules
-UART_rs232_tx I_RS232TX(
-   	.Clk(clock)            	,
-    	.Rst_n(~reset)         	,
-    	.TxEn(TxEn)           	,
-    	.TxData(out_reg)      	,
-   	.TxDone(TxDone)      	,
-   	.Tx(out)               	,
-   	.Tick(tick)           	,
-   	.NBits(NBits)
-    );
-
-//Make connections between tick generator module and TOP inputs and outputs and the other modules
-UART_BaudRate_generator I_BAUDGEN(
-    	.Clk(clock)               ,
-    	.Rst_n(~reset)           ,
-    	.Tick(tick)             ,
-    	.BaudRate(BaudRate)
-    );
-
-			
-	 always
+		
+	
+	 always @(posedge clock)
 	 begin
 	 
 	 
 	 	
-		TxEn = in_fd && in_back && in_left && in_right;
+		transmit = ~in_fd || ~in_back || ~in_left || ~in_right;
 		
 		if (~in_fd && in_back && in_left && in_right && ~stop)
 			out_reg = 8'b00000001;
@@ -156,11 +127,11 @@ UART_BaudRate_generator I_BAUDGEN(
     );
 
     /** PROCESSOR **/
-	 assign custom_in = 32'd3;
+	 assign forward_data = Rx_data;
 	 
     processor my_processor(
         // Custom
-		  custom_in,
+		  forward_data,
 		  stop,
 		  
 		  // Control signals
