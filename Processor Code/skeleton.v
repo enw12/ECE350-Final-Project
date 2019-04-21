@@ -67,7 +67,7 @@ UART_rs232_tx I_RS232TX(
     	.TxEn(TxEn)           	,
     	.TxData(out_reg)      	,
    	.TxDone(TxDone)      	,
-   	.Tx(Tx)               	,
+   	.Tx(out)               	,
    	.Tick(tick)           	,
    	.NBits(NBits)
     );
@@ -83,6 +83,8 @@ UART_BaudRate_generator I_BAUDGEN(
 			
 	 always
 	 begin
+	 
+	 
 	 	
 		TxEn = in_fd && in_back && in_left && in_right;
 		
