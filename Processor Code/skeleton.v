@@ -9,17 +9,20 @@
  * inspect which signals the processor tries to assert when.
  */
 
-module skeleton(clock, reset, // data_writeReg, ctrl_writeReg, ctrl_writeEnable, ALU_rdy, mdRDY, stop, 
-		in_fd, in_back, in_left, in_right, out, out_signal, Rx);
+module skeleton(clock, reset, data_writeReg, ctrl_writeReg, ctrl_writeEnable, //ALU_rdy, mdRDY, stop, 
+		in_fd, in_back, in_left, in_right, speed, out, out_signal, Rx, stop, 
+		outLight0, outLight1, outLight2, outLight3, outLight4, outLight5);
     input clock, reset;
 	 //TEST
-//	 output [31:0] data_writeReg;
-//	 output [4:0] ctrl_writeReg;
-//	 output ctrl_writeEnable, ALU_rdy, mdRDY, stop;
+	 output [31:0] data_writeReg;
+	 output [4:0] ctrl_writeReg;
+	 output ctrl_writeEnable; //, ALU_rdy, mdRDY, stop;
 
-	 input in_fd, in_back, in_left, in_right;
-	 output out;
-	 output [7:0] out_signal;
+	 output outLight0, outLight1, outLight2, outLight3, outLight4, outLight5;
+	 
+	 input in_fd, in_back, in_left, in_right, speed;
+	 output out, stop;
+	 output [7:0] out_signal;	 
 	 
 	 input Rx;
 	 
@@ -27,16 +30,25 @@ module skeleton(clock, reset, // data_writeReg, ctrl_writeReg, ctrl_writeEnable,
 	 reg [7:0] out_reg;
 	 assign out_signal = out_reg;
 	 
-	 reg [7:0] Rx_data;
+	 wire [31:0] forward_data;
+	 
+	 wire [7:0] Rx_data;
 	 
 	 reg transmit;
 	 wire t_enable, transmit_active;
 
+	 reg outLED0, outLED1, outLED2, outLED3, outLED4, outLED5;
+	 assign outLight0 = outLED0;
+	 assign outLight1 = outLED1;
+	 assign outLight2 = outLED2;
+	 assign outLight3 = outLED3;
+	 assign outLight4 = outLED4;
+	 assign outLight5 = outLED5;
 
 		assign t_enable = ~transmit_active & transmit;
 
 		test myTransmit(
-				.from_uart_ready(), 						// avalon_data_receive_source.ready
+				.from_uart_ready(1'b1), 				// avalon_data_receive_source.ready
 				.from_uart_data(Rx_data),  						//                           .data
 				.from_uart_error(), 						//                           .error
 				.from_uart_valid(), 						//                           .valid
@@ -50,31 +62,106 @@ module skeleton(clock, reset, // data_writeReg, ctrl_writeReg, ctrl_writeEnable,
 				.reset(reset)   
 		);
 
-		
+	 reg [15:0] counter;
 	
 	 always @(posedge clock)
 	 begin
 	 	
-		transmit = ~in_fd || ~in_back || ~in_left || ~in_right;
+		if (counter[15])
+			begin
+			transmit = ~in_fd || ~in_back || ~in_left || ~in_right;
+			counter = 0;
+			end
+		else
+			transmit = 1'b0;
+			counter = counter + 1;
+		
 		
 		if (~in_fd && in_back && in_left && in_right && ~stop)
+			begin
 			out_reg = 8'b00000001;
+			if (speed)
+				out_reg = out_reg + 16;
+			end
 		else if (~in_fd && in_back && in_left && ~in_right && ~stop)
+			begin
 			out_reg = 8'b00000010;
+			if (speed)
+				out_reg = out_reg + 16;
+			end
 		else if (in_fd && in_back && in_left && ~in_right)
+			begin
 			out_reg = 8'b00000011;
+			if (speed)
+				out_reg = out_reg + 16;
+			end
 		else if (in_fd && ~in_back && in_left && ~in_right)
+			begin
 			out_reg = 8'b00000100;
+			if (speed)
+				out_reg = out_reg + 16;
+			end
 		else if (in_fd && ~in_back && in_left && in_right)
+			begin
 			out_reg = 8'b00000101;
+			if (speed)
+				out_reg = out_reg + 16;
+			end
 		else if (in_fd && ~in_back && ~in_left && in_right)
+			begin
 			out_reg = 8'b00000110;
+			if (speed)
+				out_reg = out_reg + 16;
+			end
 		else if (in_fd && in_back && ~in_left && in_right)
+			begin
 			out_reg = 8'b00000111;
+			if (speed)
+				out_reg = out_reg + 16;
+			end
 		else if (~in_fd && in_back && ~in_left && in_right && ~stop)	
+			begin
 			out_reg = 8'b00001000;
+			if (speed)
+				out_reg = out_reg + 16;
+			end
 		else 
 			out_reg = 8'b00000000;
+	 
+//		if (stop) 
+//			out_reg = 8'b00000000;
+	 
+		if (Rx_data[0]) 
+			outLED0 = 1'b1;
+		else 
+			outLED0 = 1'b0;
+		
+		if (Rx_data[1]) 
+			outLED1 = 1'b1;
+		else 
+			outLED1 = 1'b0;
+			
+		if (Rx_data[2]) 
+			outLED2 = 1'b1;
+		else 
+			outLED2 = 1'b0;
+			
+		if (Rx_data[3]) 
+			outLED3 = 1'b1;
+		else 
+			outLED3 = 1'b0;
+			
+		if (Rx_data[4]) 
+			outLED4 = 1'b1;
+		else 
+			outLED4 = 1'b0;
+			
+		if (Rx_data[5]) 
+			outLED5 = 1'b1;
+		else 
+			outLED5 = 1'b0;
+		
+	 
 	 end
 	 
 	 
@@ -125,7 +212,9 @@ module skeleton(clock, reset, // data_writeReg, ctrl_writeReg, ctrl_writeEnable,
     );
 
     /** PROCESSOR **/
-	 assign forward_data = Rx_data;
+	 assign forward_data[31:6] = 26'b0;
+	 assign forward_data[5:0] = Rx_data[5:0];
+//	 assign forward_data = 32'b00000000000000000000000000000001;
 	 
     processor my_processor(
         // Custom
